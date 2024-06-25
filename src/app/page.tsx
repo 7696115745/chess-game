@@ -1,113 +1,286 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
-  return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">src/app/page.tsx</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:size-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
+import React, { useRef, useState } from "react";
+
+const Page: React.FC = () => {
+  const chessBoardRef = useRef<HTMLDivElement>(null); // Ref for the chessboard container
+  const [isWhiteTurn, setIsWhiteTurn] = useState<boolean>(true); // State to track whose turn it is (true for white's turn)
+  const [board, setBoard] = useState<string[]>([
+    "\u265C",
+    "\u265E",
+    "\u265D",
+    "\u265B",
+    "\u265A",
+    "\u265D",
+    "\u265E",
+    "\u265C", // Black pieces
+    "\u265F",
+    "\u265F",
+    "\u265F",
+    "\u265F",
+    "\u265F",
+    "\u265F",
+    "\u265F",
+    "\u265F", // Black pawns
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "", // Empty rows
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "\u2659",
+    "\u2659",
+    "\u2659",
+    "\u2659",
+    "\u2659",
+    "\u2659",
+    "\u2659",
+    "\u2659", // White pawns
+    "\u2656",
+    "\u2658",
+    "\u2657",
+    "\u2655",
+    "\u2654",
+    "\u2657",
+    "\u2658",
+    "\u2656", // White pieces
+  ]);
+  const [selectedPiece, setSelectedPiece] = useState<HTMLElement | null>(null); // State to track the currently selected piece
+
+  // Event handler for when a piece is clicked
+  const handlePieceClick = (piece: HTMLElement) => {
+    console.log("Piece clicked:", piece.innerHTML);
+
+    const isWhitePiece =
+      piece.innerHTML.charCodeAt(0) >= 9812 &&
+      piece.innerHTML.charCodeAt(0) <= 9817; // Determine if the piece is white
+    if ((isWhiteTurn && !isWhitePiece) || (!isWhiteTurn && isWhitePiece)) {
+      console.log("Piece Deleted");
+
+      return; // Prevent selecting pieces out of turn
+    }
+    if (selectedPiece) {
+      selectedPiece.classList.remove("selected"); // Remove 'selected' class from previously selected piece
+    }
+    piece.classList.add("selected"); // Add 'selected' class to the newly selected piece
+    setSelectedPiece(piece); // Update selectedPiece to the clicked piece
+  };
+
+  // Validation function for pawn moves
+  const isValidPawnMove = (
+    startId: number,
+    endId: number,
+    isWhitePiece: boolean,
+    isCapture: boolean
+  ) => {
+    const direction = isWhitePiece ? -8 : 8;
+    const initialRow = isWhitePiece ? startId >= 48 : startId <= 15;
+    const moveDistance = endId - startId;
+
+    if (isCapture) {
+      return Math.abs(moveDistance) === 7 || Math.abs(moveDistance) === 9;
+    }
+
+    if (
+      moveDistance === direction ||
+      (moveDistance === 2 * direction && initialRow)
+    ) {
+      return true;
+    } else {
+      selectedPiece?.classList.add("selected");
+      return false;
+    }
+  };
+
+  // Validation function for rook moves
+  const isValidRookMove = (startId: number, endId: number) => {
+    const sameColumn = startId % 8 === endId % 8; // Check if rook moves in the same column
+    const sameRow = Math.floor(startId / 8) === Math.floor(endId / 8); // Check if rook moves in the same row
+     return sameColumn || sameRow; // Valid rook move if either condition is true
+  };
+
+  // Validation function for knight moves
+  const isValidKnightMove = (startId: number, endId: number) => {
+    const rowDiff = Math.abs(Math.floor(startId / 8) - Math.floor(endId / 8)); // Difference in rows
+    const colDiff = Math.abs((startId % 8) - (endId % 8)); // Difference in columns
+     return (rowDiff === 2 && colDiff === 1) || (rowDiff === 1 && colDiff === 2); // Valid knight move
+  };
+
+  // Validation function for bishop moves
+  const isValidBishopMove = (startId: number, endId: number) => {
+     return (
+      Math.abs(Math.floor(startId / 8) - Math.floor(endId / 8)) ===
+      Math.abs((startId % 8) - (endId % 8))
+    ); // Valid bishop move
+  };
+
+  // Validation function for queen moves
+  const isValidQueenMove = (startId: number, endId: number) => {
+     return isValidRookMove(startId, endId) || isValidBishopMove(startId, endId); // Valid queen move (combines rook and bishop moves)
+  };
+
+  // Validation function for king moves
+  const isValidKingMove = (startId: number, endId: number) => {
+    const rowDiff = Math.abs(Math.floor(startId / 8) - Math.floor(endId / 8)); // Difference in rows
+    const colDiff = Math.abs((startId % 8) - (endId % 8)); // Difference in columns
+     return rowDiff <= 1 && colDiff <= 1; // Valid king move within one square in any direction
+  };
+
+  // Function to determine if a move is valid based on piece type
+  const isValidMove = (
+    startId: number,
+    endId: number,
+    pieceType: number,
+    isWhitePiece: boolean,
+    isCapture: boolean
+  ) => {
+    const capturedPiece = board[endId]; // Piece being captured (if any)
+
+    switch (pieceType) {
+      case 9817: // White pawn
+      case 9823: // Black pawn
+        return isValidPawnMove(startId, endId, isWhitePiece, isCapture);
+      case 9814: // White rook
+      case 9820: // Black rook
+        return isValidRookMove(startId, endId);
+      case 9816: // White knight
+      case 9822: // Black knight
+        return isValidKnightMove(startId, endId);
+      case 9815: // White bishop
+      case 9821: // Black bishop
+        return isValidBishopMove(startId, endId);
+      case 9813: // White queen
+      case 9819: // Black queen
+        return isValidQueenMove(startId, endId);
+      case 9812: // White king
+      case 9818: // Black king
+        return isValidKingMove(startId, endId);
+      default:
+        return false;
+    }
+  };
+
+  // Event handler for when a square on the chessboard is clicked
+  const handleSquareClick = (squareId: number) => {
+    console.log("Square clicked:", squareId);
+
+    const squareContainsPiece = board[squareId - 1] !== ""; // Check if the square contains a piece
+    console.log("Square contains piece:", squareContainsPiece);
+
+    if (
+      selectedPiece &&
+      selectedPiece.parentElement?.id !== squareId.toString()
+    ) {
+      const pieceType = selectedPiece.innerHTML.charCodeAt(0); // Get the type of the selected piece
+      const isWhitePiece = pieceType >= 9812 && pieceType <= 9817; // Check if the selected piece is white
+      const startId = parseInt(selectedPiece.parentElement?.id || "0") - 1; // Get the ID of the square where the selected piece is currently located (0-based index)
+      const endId = squareId - 1; // Get the ID of the square where the selected piece is being moved (0-based index)
+      const isCapture =
+        squareContainsPiece &&
+        isWhitePiece !==
+          (board[endId].charCodeAt(0) >= 9812 &&
+            board[endId].charCodeAt(0) <= 9817); // Check if the move involves capturing an opponent's piece
+
+      console.log("Selected piece type:", pieceType);
+      console.log("Is white piece:", isWhitePiece);
+      console.log("Start ID:", startId);
+      console.log("End ID:", endId);
+      console.log("Is capture:", isCapture);
+
+      if (isValidMove(startId, endId, pieceType, isWhitePiece, isCapture)) {
+        // Validate the move
+        console.log("Valid move");
+
+        const newBoard = [...board]; // Create a copy of the board
+
+        // Handle move and capture
+        if (isCapture) {
+          newBoard[endId] = selectedPiece.innerHTML; // Move the capturing piece to the new square
+          newBoard[startId] = ""; // Clear the original square
+
+          console.log(`Piece ${board[endId]} captured by ${newBoard[endId]}`);
+        } else {
+          newBoard[endId] = selectedPiece.innerHTML; // Move the selected piece to the new square
+          newBoard[startId] = ""; // Clear the original square
+        }
+        setBoard(newBoard);
+
+        selectedPiece.classList.remove("selected"); // Remove 'selected' class from the moved piece
+        setSelectedPiece(null); // Clear the selected piece
+        setIsWhiteTurn(!isWhiteTurn); // Toggle turn to the next player
+      } else {
+        console.log("Invalid move");
+      }
+    } else {
+      console.log("No piece selected or same square clicked");
+    }
+  };
+
+  // Function to render the chessboard UI
+  const renderBoard = () => {
+    const squares = [];
+    for (let i = 0; i < 64; i++) {
+      const isWhiteSquare = (Math.floor(i / 8) + i) % 2 === 0; // Determine if square should be white or black
+      const piece = board[i]; // Get the piece (if any) for the current square
+      const squareId = i + 1; // Square ID (1-based index)
+
+      squares.push(
+        <div
+          key={i}
+          id={squareId.toString()}
+          className={`square ${isWhiteSquare ? "white" : "black"}`} // Apply appropriate square color
+          onClick={() => handleSquareClick(squareId)} // Attach click handler to the square
+        >
+          {piece && (
+            <span
+              className="piece"
+              dangerouslySetInnerHTML={{ __html: piece }} // Render the piece using its HTML entity
+              onClick={(e) => {
+                e.stopPropagation(); // Prevent the click event from bubbling up to the square
+                handlePieceClick(e.currentTarget as HTMLElement); // Call piece click handler
+              }}
+            ></span>
+          )}
         </div>
+      );
+    }
+    return squares;
+  };
+
+  // Render the chessboard component
+  return (
+    <div className="container">
+       <div className="chess-board" ref={chessBoardRef}>
+        {renderBoard()}
       </div>
-
-      <div className="relative z-[-1] flex place-items-center before:absolute before:h-[300px] before:w-full before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-full after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 sm:before:w-[480px] sm:after:w-[240px] before:lg:h-[360px]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className="mb-32 grid text-center lg:mb-0 lg:w-full lg:max-w-5xl lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Docs{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Learn{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Templates{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Explore starter templates for Next.js.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Deploy{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-balance text-sm opacity-50">
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
+    </div>
   );
-}
+};
+
+export default Page;
